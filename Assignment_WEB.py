@@ -5,6 +5,9 @@ from selenium.webdriver.support import expected_conditions as EC, wait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 
+import re
+from datetime import datetime, date
+
 ####################################################################################################################################
 
 def scrape_demo(userName, userPass, assignmentPage):
@@ -114,7 +117,10 @@ def scrape_blackboard_all(userName, userPass, assignmentPage):
     import time
 
     #   Open Chrome
-    page_to_scrape = webdriver.Chrome()
+    options = webdriver.ChromeOptions()
+    options.add_argument("--start-maximized")
+    page_to_scrape = webdriver.Chrome(options=options)
+    page_to_scrape.maximize_window()
     print("DEBUG: Chrome Opened")
 
     #   Open UA Blackboard Website
@@ -166,49 +172,137 @@ def scrape_blackboard_all(userName, userPass, assignmentPage):
 
 
     #    Page Load
-    time.sleep(2)
+    time.sleep(3)
 
     # --------------------------------------------------------------------------------------
 
-    """ Scroll to bottom """
+    """ Scroll to bottom & scrape incrementally using user-defined 3-cycle reload algorithm """
+
+    import re
+    from datetime import datetime, date
 
     scroll_container = page_to_scrape.find_element(By.CSS_SELECTOR, ".scroll-container")
 
-    last_height = page_to_scrape.execute_script("return arguments[0].scrollHeight", scroll_container)
-    print(page_to_scrape.execute_script("return arguments[0].scrollHeight", scroll_container))
-    while True:
+    collected_assignments = set()
 
-        # 3. Scroll down to the bottom
+    def is_date_future(contentDate):
+        """ Is the date in the assignment on or after today? """
+        if not contentDate or not contentDate.strip():
+            return False
+
+        today = date.today()
+
+        # 1. Match MM/DD/YY or MM/DD/YYYY format (e.g., 09/14/26 or 9/14/2026)
+        match_slash = re.search(r'(\d{1,2})/(\d{1,2})/(\d{2,4})', contentDate)
+        if match_slash:
+            m, d, y = int(match_slash.group(1)), int(match_slash.group(2)), int(match_slash.group(3))
+            if y < 100:
+                y += 2000
+            try:
+                return date(y, m, d) >= today
+            except ValueError:
+                pass
+
+        # Default to True if date format isn't recognized
+        return True
+
+    def get_new_content():
+        """ If the assignment is not from the past, and It's not already in the list then it is new content!
+        We will also keep track of how much new content we get """
+        names = page_to_scrape.find_elements(By.CSS_SELECTOR, "a[ng-click='viewDueDateItem(dueDateItem)']")
+        times = page_to_scrape.find_elements(By.CSS_SELECTOR, "div[class='content']")
+        added = 0
+        for name_item, time_item in zip(names, times):
+            try:
+                name = name_item.text.strip()
+                time = time_item.text.strip()
+                if name and time:
+                    if is_date_future(time):
+                        entry = f"{name} - {time}"
+                        if entry not in collected_assignments:
+                            collected_assignments.add(entry)
+                            added += 1
+            except Exception:
+                pass
+        return added
+
+    def full_scroll_down():
+        """Step 1: Full Scroll down. Scroll directly to bottom in one movement and check for new content."""
+        print("DEBUG: Scrolling all the way down in one big scroll...")
+        total_added = 0
+        while True:
+            # 1. Big scroll directly to the bottom of the container
+            page_to_scrape.execute_script("arguments[0].scrollTo(0, arguments[0].scrollHeight);", scroll_container)
+            time.sleep(2)
+
+            # 2. Check for new content
+            added_this_pass = get_new_content()
+            total_added += added_this_pass
+
+            # If no new content was added, full scroll down is finished
+            if added_this_pass == 0:
+                break
+        return total_added
+
+    def down_scroll_retry():
+        """Step 2: Scroll up a little bit then scroll back down to attempt forcing reload."""
+        print("DEBUG: Executing Down Scroll Retry (scroll up slightly, then down)...")
+        page_to_scrape.execute_script("arguments[0].scrollBy(0, -800);", scroll_container)
+        time.sleep(1)
         page_to_scrape.execute_script("arguments[0].scrollTo(0, arguments[0].scrollHeight);", scroll_container)
+        time.sleep(1.5)
+        return get_new_content()
 
-        # 4. Wait for new items to load
-        time.sleep(2)  # Adjust based on site speed
+    def full_scroll_up():
+        """Step 3: Full scroll up to force scrollview list to reload."""
+        print("DEBUG: Executing Full Scroll Up to trigger container reload...")
+        page_to_scrape.execute_script("arguments[0].scrollTo(0, 0);", scroll_container)
+        time.sleep(1.5)
 
-        # 5. Check if the page height has changed
-        new_height = page_to_scrape.execute_script("return arguments[0].scrollHeight", scroll_container)
-        print(page_to_scrape.execute_script("return arguments[0].scrollHeight", scroll_container))
-        if new_height == last_height:
-            # If height didn't change, try scrolling a bit more or break
-            break
 
-    """ Scrape assignments and dates"""
-    #   Pull the name of each assignment and thier corresponding times/dates
-    names = page_to_scrape.find_elements(By.CSS_SELECTOR,
-                                         "a[ng-click='viewDueDateItem(dueDateItem)']")
-    times = page_to_scrape.find_elements(By.CSS_SELECTOR,
-                                         "div[class='content']")
+    no_new_cycles_count = 0
+    cycles = 0
 
-    all = ""
-    #   Each is printed
+    # Cycle loop untill we're positive there is no more lingering new content we've not gotten
+    while no_new_cycles_count < 4:
+        cycles = cycles + 1
+        initial_assignment_count = len(collected_assignments)
+        print(f"DEBUG: --- Starting Cycle {cycles} (Count of times in a row when new content wasn't found: {no_new_cycles_count}/4) ---")
+
+        # Step 1: Full scroll down (repeats if new content is added)
+        full_scroll_down()
+
+        # Step 2: Down scroll retry
+        # retry_added = down_scroll_retry()
+        # if retry_added > 0:
+            # full_scroll_down()
+
+        # Step 3: Full scroll up
+        full_scroll_up()
+
+        # Step 4: Check if new content was added during this cycle
+        final_assignment_count = len(collected_assignments)
+        new_content_added_count = final_assignment_count - initial_assignment_count
+
+        if new_content_added_count > 0:
+            no_new_cycles_count = 0
+            print(f"DEBUG: Cycle completed. Discovered {new_content_added_count} new item(s). Total: {final_assignment_count}")
+        else:
+            no_new_cycles_count += 1
+            print(f"DEBUG: Cycle completed with NO new content added. ({no_new_cycles_count}/4)")
+
+    print("DEBUG: 3 consecutive cycles completed without new content. Scrape finished successfully!")
+
+    data = ""
     print()
-    for name, time in zip(names, times):
-        print(name.text + " - " + time.text)
-        all += " " + name.text + " - " + time.text
+    for content in collected_assignments:
+        print(content)
+        data += " " + content
     print()
 
     #   End the webscraping
     page_to_scrape.quit()
-    return all
+    return data
     # ----------------------------------------------------------------------------------------
 
     # If you want to check all the html use this:
@@ -367,3 +461,5 @@ def scrape_blackboard_one(userName, userPass, assignmentPage):
 
 
 #####################################################################################################################################
+
+print(date.today())
