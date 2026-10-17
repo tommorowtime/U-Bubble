@@ -235,11 +235,10 @@ class ClassesScreen(Screen):
     def get_assignments_to_tasks(self):
         """Extract the info from the selected class and send it to google tasks or allow user to copy the raw text themselves"""
         MDApp.get_running_app().show_notif("Getting assignments...", "process")
-        global raw_text
-        raw_text = recieve_scraped(self.ids.class_title.text, self.ids.class_website.text, MDApp.get_running_app().isSignedIn)
-        if raw_text:
-            sync_assignments_to_tasks(raw_text)
-            self.text_to_copy(raw_text)
+        unfiltered_assignments = recieve_scraped(self.ids.class_title.text, self.ids.class_website.text, MDApp.get_running_app().isSignedIn)
+        if unfiltered_assignments:
+            sync_assignments_to_tasks(unfiltered_assignments)
+            self.text_to_copy(str(unfiltered_assignments))
             MDApp.get_running_app().show_notif("assignments sent and available to copy","success")
         else:
             MDApp.get_running_app().show_notif("No assignments found to sync. Maybe sign in or connect a site.", "error")

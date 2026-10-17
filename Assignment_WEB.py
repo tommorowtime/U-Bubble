@@ -9,6 +9,7 @@ import re
 from datetime import datetime, date
 
 ####################################################################################################################################
+####################################################################################################################################
 
 def scrape_demo(userName, userPass, assignmentPage):
 
@@ -45,75 +46,29 @@ def scrape_demo(userName, userPass, assignmentPage):
         names = page_to_scrape.find_elements(By.CLASS_NAME, "assignment-title")
         times = page_to_scrape.find_elements(By.CLASS_NAME, "due-date")
 
-        all = ""
+        unfiltered_assignments = []
         #   Each is printed
         print()
-        for courseName, name, time in zip(courseName,names,times):
+        for courseName, name, time in zip(courseName, names, times):
             print(courseName.text + ": " + name.text + " - " + time.text)
-            all += courseName.text + ": " + name.text + " - " + time.text
+            unfiltered_assignments.append({
+                "class_name": courseName.text,
+                "assignment_type": None,
+                "assignment_title": name.text,
+                "due_date": time.text,
+                "due_time": None,
+                "link": assignmentPage,
+                "class_id": None
+            })
         print()
-
-        return all
 
         #   End the webscraping
         page_to_scrape.quit()
+        return unfiltered_assignments
 
     #scrape_demo("username","password","file:///C:/Users/indmi/Documents/Codex/2026-06-25/i/outputs/mock-edu-portal.html")
 
-
-#####################################################################################################################################
-def scrape_zybooks(userName, userPass, assignmentPage):
-    import time
-    if assignmentPage:
-        #   Open Chrome
-        page_to_scrape = webdriver.Chrome()
-
-        #   Open Website
-        page_to_scrape.get("https://learn.zybooks.com/signin")
-
-        #   Input Username
-        username = page_to_scrape.find_element(By.CSS_SELECTOR, "input[type='email']")
-        username.send_keys(userName)
-        #   Input Password
-        password = page_to_scrape.find_element(By.CSS_SELECTOR, "input[type='password']")
-        password.send_keys(userPass)
-
-        time.sleep(15)
-        #   Sign in button
-        page_to_scrape.find_element(By.CLASS_NAME, "title").click()
-        # wait to load
-        time.sleep(3)
-        #   The Page we want
-        page_to_scrape.get("https://learn.zybooks.com/zybook/UACS101YessickSpring2026?selectedPanel=assignments-panel")
-        # wait to load
-        time.sleep(15)
-
-        # --------------------------------------------------------------------------------------
-
-        #   Pull the name of each assignment and thier corresponding times/dates
-        names = page_to_scrape.find_elements(By.CSS_SELECTOR, "h3[class='assignment-title my-auto primary-font-regular']")
-        times = page_to_scrape.find_elements(By.CSS_SELECTOR, "div[class='due-date-text body-text text-13 flex items-center']")
-
-        all = ""
-        #   Each is printed
-        print()
-        for name, time in zip(names, times):
-            print(name.text + " - " + time.text)
-            all += " " + name.text + " - " + time.text
-        print()
-
-        #   End the webscraping
-        page_to_scrape.quit()
-        return all
-
-        # ----------------------------------------------------------------------------------------
-
-        # If you want to check all the html use this:
-        #--print(page_to_scrape.page_source)--
-        # -------------^
-
-######################################################################################################################################################
-def scrape_blackboard_all(userName, userPass, assignmentPage):
+def scrape_blackboard_all(className, userName, userPass, assignmentPage):
     import time
 
     #   Open Chrome
@@ -184,6 +139,7 @@ def scrape_blackboard_all(userName, userPass, assignmentPage):
     scroll_container = page_to_scrape.find_element(By.CSS_SELECTOR, ".scroll-container")
 
     collected_assignments = set()
+    unfiltered_assignments = []
 
     def is_date_future(contentDate):
         """ Is the date in the assignment on or after today? """
@@ -221,6 +177,15 @@ def scrape_blackboard_all(userName, userPass, assignmentPage):
                         entry = f"{name} - {time}"
                         if entry not in collected_assignments:
                             collected_assignments.add(entry)
+                            unfiltered_assignments.append({
+                                "class_name": className,
+                                "assignment_type": None,
+                                "assignment_title": name,
+                                "due_date": time,
+                                "due_time": None,
+                                "link": assignmentPage,
+                                "class_id": None
+                            })
                             added += 1
             except Exception:
                 pass
@@ -293,16 +258,14 @@ def scrape_blackboard_all(userName, userPass, assignmentPage):
 
     print("DEBUG: 3 consecutive cycles completed without new content. Scrape finished successfully!")
 
-    data = ""
     print()
     for content in collected_assignments:
         print(content)
-        data += " " + content
     print()
 
     #   End the webscraping
     page_to_scrape.quit()
-    return data
+    return unfiltered_assignments
     # ----------------------------------------------------------------------------------------
 
     # If you want to check all the html use this:
@@ -310,8 +273,67 @@ def scrape_blackboard_all(userName, userPass, assignmentPage):
     # -------------^
 
 
-#####################################################################################################################################
-def scrape_cengage(userName, userPass, assignmentPage):
+####################################################################################################################################
+####################################################################################################################################
+def scrape_zybooks(className, userName, userPass, assignmentPage):
+    import time
+    if assignmentPage:
+        #   Open Chrome
+        page_to_scrape = webdriver.Chrome()
+
+        #   Open Website
+        page_to_scrape.get("https://learn.zybooks.com/signin")
+
+        #   Input Username
+        username = page_to_scrape.find_element(By.CSS_SELECTOR, "input[type='email']")
+        username.send_keys(userName)
+        #   Input Password
+        password = page_to_scrape.find_element(By.CSS_SELECTOR, "input[type='password']")
+        password.send_keys(userPass)
+
+        time.sleep(15)
+        #   Sign in button
+        page_to_scrape.find_element(By.CLASS_NAME, "title").click()
+        # wait to load
+        time.sleep(3)
+        #   The Page we want
+        page_to_scrape.get("https://learn.zybooks.com/zybook/UACS101YessickSpring2026?selectedPanel=assignments-panel")
+        # wait to load
+        time.sleep(15)
+
+        # --------------------------------------------------------------------------------------
+
+        #   Pull the name of each assignment and thier corresponding times/dates
+        names = page_to_scrape.find_elements(By.CSS_SELECTOR, "h3[class='assignment-title my-auto primary-font-regular']")
+        times = page_to_scrape.find_elements(By.CSS_SELECTOR, "div[class='due-date-text body-text text-13 flex items-center']")
+
+        unfiltered_assignments = []
+        #   Each is printed
+        print()
+        for name, time in zip(names, times):
+            print(name.text + " - " + time.text)
+            unfiltered_assignments.append({
+                "class_name": className,
+                "assignment_type": None,
+                "assignment_title": name.text,
+                "due_date": time.text,
+                "due_time": None,
+                "link": assignmentPage,
+                "class_id": None
+            })
+        print()
+
+        #   End the webscraping
+        page_to_scrape.quit()
+        return unfiltered_assignments
+
+        # ----------------------------------------------------------------------------------------
+
+        # If you want to check all the html use this:
+        #--print(page_to_scrape.page_source)--
+        # -------------^
+
+def scrape_cengage(className, userName, userPass, assignmentPage):
     import time
     if assignmentPage:
         #   Open Chrome
@@ -349,17 +371,25 @@ def scrape_cengage(userName, userPass, assignmentPage):
         names = page_to_scrape.find_elements(By.CLASS_NAME, "css-4qmd1n")
         times = page_to_scrape.find_elements(By.CLASS_NAME, "css-atykpv")
 
-        all = ""
+        unfiltered_assignments = []
         #   Each is printed
         print()
         for name, time in zip(names, times):
             print(name.text + " - " + time.text)
-            all += " " + name.text + " - " + time.text
+            unfiltered_assignments.append({
+                "class_name": className,
+                "assignment_type": None,
+                "assignment_title": name.text,
+                "due_date": time.text,
+                "due_time": None,
+                "link": assignmentPage,
+                "class_id": None
+            })
         print()
 
         #   End the webscraping
         page_to_scrape.quit()
-        return all
+        return unfiltered_assignments
 
         #----------------------------------------------------------------------------------------
 
@@ -367,8 +397,8 @@ def scrape_cengage(userName, userPass, assignmentPage):
         #--print(page_to_scrape.page_source)--
         #-------------^
 
-#########################################################################################################################################333
-def scrape_blackboard_one(userName, userPass, assignmentPage):
+
+def scrape_blackboard_one(className, userName, userPass, assignmentPage):
     import time
 
 
@@ -423,7 +453,8 @@ def scrape_blackboard_one(userName, userPass, assignmentPage):
 
     # --------------------------------------------------------------------------------------
 
-    all = ""
+    unfiltered_assignments = []
+
     while True:
         import time
         time.sleep(3)
@@ -437,7 +468,15 @@ def scrape_blackboard_one(userName, userPass, assignmentPage):
         print()
         for name, time in zip(names, times):
             print(name.text + " - " + time.text)
-            all += " " + name.text + " - " + time.text
+            unfiltered_assignments.append({
+            "class_name": className,
+            "assignment_type": None,
+            "assignment_title": name.text,
+            "due_date": time.text,
+            "due_time": None,
+            "link": assignmentPage,
+            "class_id": None
+        })
         print()
 
         button = page_to_scrape.find_element(By.XPATH, "//button[contains(@class, 'js-pagination-page-up-button')]")
@@ -452,14 +491,12 @@ def scrape_blackboard_one(userName, userPass, assignmentPage):
 
     #   End the webscraping
     page_to_scrape.quit()
-    return all
+    return unfiltered_assignments
     # ----------------------------------------------------------------------------------------
 
-    # If you want to check all the html use this:
+    # If you want to check all the HTML use this:
     # --print(page_to_scrape.page_source)--
     # -------------^
 
 
 #####################################################################################################################################
-
-print(date.today())
