@@ -161,24 +161,28 @@ def recieve_scraped(classname, name, isSigned):
         memControl.execute("SELECT * FROM login")
         logins = memControl.fetchall()
 
-    all_data = ""
+    all_data = []
 
     for login in logins:
 
-        if name == login[0] == "cengage" and login[3] == isSigned:
-            all_data += scrape_cengage(login[1], login[2], get_page(classname, "cengage", isSigned))
-
-        if name == "zybooks" and login[0] == "zybooks" and login[3] == isSigned:
-            all_data += scrape_zybooks(login[1], login[2], get_page(classname, "zybooks", isSigned))
-
-        if name == "blackboard" and login[0] == "blackboard" and login[3] == isSigned:
-            all_data += scrape_blackboard_all(login[1], login[2], get_page(classname, "blackboard", isSigned))
-
-        if name == "blackboard1" and login[0] == "blackboard" and login[3] == isSigned:
-            all_data += scrape_blackboard_one(login[1], login[2], get_page(classname, "blackboard1", isSigned))
-
+        # Collection of Classes
         if name == login[0] == "demo" and login[3] == isSigned:
             all_data += scrape_demo(login[1], login[2], get_page(classname, "demo", isSigned))
+
+        if name == "blackboard" and login[0] == "blackboard" and login[3] == isSigned:
+            all_data += scrape_blackboard_all("BB Class", login[1], login[2], get_page(classname, "blackboard", isSigned))
+
+        # Singular Classes
+        if name == login[0] == "cengage" and login[3] == isSigned:
+            all_data += scrape_cengage(classname, login[1], login[2], get_page(classname, "cengage", isSigned))
+
+        if name == "zybooks" and login[0] == "zybooks" and login[3] == isSigned:
+            all_data += scrape_zybooks(classname, login[1], login[2], get_page(classname, "zybooks", isSigned))
+
+        if name == "blackboard1" and login[0] == "blackboard" and login[3] == isSigned:
+            all_data += scrape_blackboard_one(classname, login[1], login[2], get_page(classname, "blackboard1", isSigned))
+
+
 
     return all_data
 
