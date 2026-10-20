@@ -133,6 +133,30 @@ def get_login(name,isSignedIn):
         else:
             return ""
 
+def get_connected_websites(isSignedIn):
+    """Get all connected websites for the user from DB"""
+    if isSignedIn != "user":
+        create_login_table()
+        connection = sqlite3.connect('ububble.db')
+        control = connection.cursor()
+        control.execute("SELECT name FROM login WHERE isSigned=?", (isSignedIn,))
+        logins = control.fetchall()
+        connection.close()
+    else:
+        memConnection = get_mem_connection()
+        memControl = memConnection.cursor()
+        memControl.execute("SELECT name FROM login WHERE isSigned=?", (isSignedIn,))
+        logins = memControl.fetchall()
+
+    websites = []
+    for login in logins:
+        site = login[0]
+        if site not in websites:
+            websites.append(site)
+        if site == "blackboard" and "blackboard1" not in websites:
+            websites.append("blackboard1")
+    return websites
+
 def delete_login(name, isSignedIn):
     """Delete login info from DB"""
     if isSignedIn != "user":

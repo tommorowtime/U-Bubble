@@ -18,7 +18,8 @@ from G_Tools import (
 )
 from ububbleDB import (
     send_login, get_login, send_class, recieve_scraped,
-    send_account, get_classes, delete_class, edit_class, delete_login, all_scraped
+    send_account, get_classes, delete_class, edit_class, delete_login, all_scraped,
+    get_connected_websites
 )
 #########################################################################################################
 # App Screens and their python logic, most functions are connected to buttons in the KV file
@@ -80,14 +81,42 @@ class SettingsScreen(Screen):
                 self.ids[f"connect_{site}_button"].md_bg_color = [0.4, 0.3, 0.5, 1]
 
 class ClassAddScreen(Screen):
+    menu = None
+    webname = ""
+
+    def open_menu(self):
+        """Open the drop-down menu when clicked"""
+        if self.menu:
+            self.menu.open()
+
+    def on_enter(self):
+        """Populate drop-down menu with connected websites"""
+        connected_sites = get_connected_websites(MDApp.get_running_app().isSignedIn)
+        menu_items = [
+            {
+                "text": site,
+                "viewclass": "OneLineListItem",
+                "on_release": lambda x=site: self.set_website(x),
+            } for site in connected_sites
+        ]
+        self.menu = MDDropdownMenu(
+            caller=self.ids.assignment_website,
+            items=menu_items,
+            width_mult=4,
+        )
+
+    def set_website(self, website):
+        """Set the selected assignment website"""
+        self.webname = website
+        self.ids.assignment_website.text = f"Selected: {website}"
+        self.menu.dismiss()
 
     def save_to_class(self):
         """Create a class item and save it to the database"""
         classname = self.ids.class_name.text
-        webname = self.ids.assignment_website.text
+        webname = self.webname
         assignmentpage = self.ids.assignment_page_input.text
-        if classname == webname == assignmentpage == "":
-            pass
+        if classname == "" or webname == "" or assignmentpage == "":
             MDApp.get_running_app().show_notif("Text fields can not be empty", "error")
         else:
             send_class(classname, webname, "", assignmentpage, MDApp.get_running_app().isSignedIn)
@@ -157,13 +186,21 @@ class WebsiteDataScreen(Screen):
 class ClassEditScreen(Screen):
     # Clear Drop-down menu
     menu = None
+    web_menu = None
+    webname = ""
+
     def open_menu(self):
         """Open the drop-down menu when clicked"""
         if self.menu:
             self.menu.open()
 
+    def open_web_menu(self):
+        """Open the website drop-down menu when clicked"""
+        if self.web_menu:
+            self.web_menu.open()
+
     def on_enter(self):
-        """Populate drop-down menu with current classes"""
+        """Populate drop-down menus with current classes and connected websites"""
         class_names = get_classes(MDApp.get_running_app().isSignedIn)
         menu_items = [
             {
@@ -178,20 +215,41 @@ class ClassEditScreen(Screen):
             width_mult=4,
         )
 
+        connected_sites = get_connected_websites(MDApp.get_running_app().isSignedIn)
+        web_menu_items = [
+            {
+                "text": site,
+                "viewclass": "OneLineListItem",
+                "on_release": lambda x=site: self.set_website(x),
+            } for site in connected_sites
+        ]
+        self.web_menu = MDDropdownMenu(
+            caller=self.ids.assignment_website,
+            items=web_menu_items,
+            width_mult=4,
+        )
+
     def set_item(self, classname, classweb, classpage):
         """Pre-fill the text fields with the selected class information"""
         self.ids.class_dropdown_btn.text = f"Selected: {classname}"
         self.menu.dismiss()
         self.ids.class_name.text = classname
-        self.ids.assignment_website.text = classweb
+        self.webname = classweb
+        self.ids.assignment_website.text = f"Selected: {classweb}"
         self.ids.assignment_page.text = classpage
         global oldname
         oldname = classname
 
+    def set_website(self, website):
+        """Set the selected assignment website"""
+        self.webname = website
+        self.ids.assignment_website.text = f"Selected: {website}"
+        self.web_menu.dismiss()
+
     def edit(self):
         """Confirm the edit of the selected class information"""
         try:
-            edit_class(MDApp.get_running_app().isSignedIn, self.ids.class_name.text, self.ids.assignment_website.text, self.ids.assignment_page.text, oldname)
+            edit_class(MDApp.get_running_app().isSignedIn, self.ids.class_name.text, self.webname, self.ids.assignment_page.text, oldname)
             MDApp.get_running_app().show_notif(self.ids.class_name.text + " has been edited!", "success")
         except:
             MDApp.get_running_app().show_notif("No Class selected or Invalid Class", "error")

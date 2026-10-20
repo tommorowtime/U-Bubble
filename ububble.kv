@@ -440,18 +440,14 @@ MDFloatLayout:
                 text_color_normal: 0.9, 0.9, 0.9, 1  # Light gray
                 hint_text_color: 0.6, 0.6, 0.6, 1  # Gray
 
-            MDTextField:
+            MDRaisedButton:
                 id: assignment_website
-                hint_text: "Enter Assignment Website:"
-                helper_text: "Example: blackboard"
-                helper_text_mode: "on_focus"
-                icon_right: "web"
-                mode: "rectangle"
-                font_name: "Roboto"
-                line_color_normal: 0.4, 0.3, 0.5, 1  # Dark purple
-                line_color_focus: 0.9, 0.9, 1, 1  # Light purple
-                text_color_normal: 0.9, 0.9, 0.9, 1  # Light gray
-                hint_text_color: 0.6, 0.6, 0.6, 1  # Gray
+                text: "Select Assignment Website"
+                pos_hint: {"center_x": 0.5}
+                size_hint_x: 0.6
+                on_release: root.open_menu()
+                font_name: "RobotoMedium"
+                md_bg_color: 0.4, 0.3, 0.5, 1  # Dark purple
 
             MDTextField:
                 id: assignment_page_input
@@ -632,18 +628,14 @@ MDFloatLayout:
                 text_color_normal: 0.9, 0.9, 0.9, 1  # Light gray
                 hint_text_color: 0.6, 0.6, 0.6, 1  # Gray
 
-            MDTextField:
+            MDRaisedButton:
                 id: assignment_website
-                hint_text: "new Assignment Website:"
-                helper_text: "Example: blackboard"
-                helper_text_mode: "on_focus"
-                icon_right: "web"
-                mode: "rectangle"
+                text: "Select Assignment Website"
+                pos_hint: {"center_x": 0.5}
+                size_hint_x: 0.6
+                on_release: root.open_web_menu()
                 font_name: "RobotoMedium"
-                line_color_normal: 0.4, 0.3, 0.5, 1  # Dark purple
-                line_color_focus: 0.9, 0.9, 1, 1  # Light purple
-                text_color_normal: 0.9, 0.9, 0.9, 1  # Light gray
-                hint_text_color: 0.6, 0.6, 0.6, 1  # Gray
+                md_bg_color: 0.4, 0.3, 0.5, 1  # Dark purple
 
             MDTextField:
                 id: assignment_page
